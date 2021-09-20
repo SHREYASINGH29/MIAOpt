@@ -7,8 +7,14 @@
 #include "llvm/IR/Instruction.h"
 #include "llvm/IR/Instructions.h"
 #include "llvm/IR/Module.h"
+#include "llvm/Support/CommandLine.h"
 
 using namespace llvm;
+
+static cl::opt<bool> PrintInstSubstitute(
+    "print-inst-substitute", cl::init(false),
+    cl::desc("Print instruction after optimization with substituted instructions"),
+    cl::Hidden);
 
 void SUBPass::skipEmptyInst(Module &M) {
     for (Module::iterator F = M.begin(); F != M.end(); F++) {
@@ -116,6 +122,8 @@ void SUBPass::substituteOnModule(Module &M, InstRep *I) {
     IR = I;
     skipEmptyInst(M);
     substitute(M);
+    if(PrintInstSubstitute)
+        IR->printAll(M);
     removeDeadInst(M);
     return;
 }

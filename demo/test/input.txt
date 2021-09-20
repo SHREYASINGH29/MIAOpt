@@ -1,6 +1,4 @@
 store op1, op2 : *op2=op1
 b = load a : b = *a
 b = bitcast c : b = c
-ret b : b = b
 b = getelementptr a : b = &a
-b = add c, d : b = c  d
