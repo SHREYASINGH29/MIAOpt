@@ -1,0 +1,157 @@
+%code requires {
+#include "iostream"
+#include "string"
+#include "map"
+#include "InstructionInfo.h"
+#include "vector"
+
+// Goes inside parser header file
+
+int yylex(); 
+extern int yylineno;
+std::vector<InstructionInfo*> ParseFile(std::string FileName);
+}
+
+%code {
+  // Goes inside parser cpp file
+
+  InstructionInfo *I;
+  std::vector<InstructionInfo *> InstModel;
+  int OpPos = 0;
+  int OpIndir = 0;
+  std::map<std::string, int> Operands, Empty;
+
+  void saveOperand(char *Op) {
+    std::string OpStr = Op;
+    Operands[OpStr] = OpPos;
+    OpPos += 1;
+  }
+
+  std::string InstName;
+  std::vector<int> Order;
+  bool LHS = false;
+  std::vector<int> Indirection;
+
+  void setInfo(char *Op) {
+    std::string OpStr = Op;
+    if (Operands.find(OpStr) == Operands.end()) {
+      Order.push_back(-1);
+      LHS = true;
+    } else {
+      int Idx = Operands[OpStr];
+      if (Idx == Operands.size() - 1)
+        Idx = 0;
+      else
+        Idx += 1;
+      Order.push_back(Idx);
+    }
+    Indirection.push_back(OpIndir + 1);
+    OpIndir = 0;
+  }
+
+  void print() {
+    for (int i = 0; i < Order.size(); i++) {
+      std::cout << Order[i] << "," << Indirection[i] << " | ";
+    }
+    std::cout << std::endl;
+  }
+
+  void finalize() {
+    I = new InstructionInfo(InstName);
+    I->LHS = LHS;
+    for (int i = 0; i < Order.size(); i++) {
+      I->insertOrder(Order[i]);
+      I->insertIndirection(Indirection[i]);
+    }
+    InstModel.push_back(I);
+    I = nullptr;
+  }
+
+  void reset() {
+    Operands = Empty;
+    Indirection.clear();
+    Order.clear();
+    OpPos = 0;
+    LHS = false;
+  }
+
+  void yyerror(const char *description) {
+    std::cout << description << " at line no: " << yylineno << std::endl;
+    exit(1);
+  }
+}
+
+// List all token data types here
+%union {
+    char* name;
+};
+
+// Declare tokens 
+%token <name> VAL INST
+%token COLON NEWLINE ADDRESS COMMA EQUAL STAR
+
+%type <name> InputData InputModel CVAR LLVMInst END OpVAL STARS AddrOrStar Modeling
+
+//-- GRAMMAR RULES --
+%%
+InputData
+    :
+    | InputData InputModel
+    ;
+
+InputModel 
+    : LLVMInst COLON Modeling END {
+    }
+    ;
+
+CVAR 
+    :
+    | CVAR COMMA VAL {
+        saveOperand($3);
+    }
+    ;
+
+LLVMInst 
+    : INST VAL CVAR {
+        saveOperand($2);
+        InstName = $1;
+    }
+    | VAL EQUAL INST VAL CVAR {
+        saveOperand($4);
+        InstName = $3;
+    }
+    ;
+
+STARS
+    :
+    | STARS STAR {OpIndir += 1;}
+    ;
+
+AddrOrStar
+    :
+    | ADDRESS {OpIndir = -1;}
+    | STARS
+    ;
+
+Modeling 
+    : AddrOrStar OpVAL EQUAL AddrOrStar OpVAL {
+        LHS = true;
+    }
+    ;
+
+OpVAL
+    : VAL {setInfo($1);}
+END
+    : NEWLINE {
+        finalize();
+        reset();
+    }
+%%
+
+//-- FUNCTION DEFINITIONS --
+std::vector<InstructionInfo*> ParseFile(std::string FileName){
+  extern FILE *yyin;
+  yyin = fopen(FileName.c_str(), "r");
+  yyparse();
+  return InstModel;
+}

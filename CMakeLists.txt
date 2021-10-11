@@ -17,6 +17,8 @@ add_library(MIAOpt MODULE
     Inst.cpp
     InstRep.cpp
     InstructionInfo.cpp
+    IMParser.cpp
+    IMLexer.cpp
     Parser.cpp
     Substitution.cpp
     Token.cpp
@@ -25,6 +27,6 @@ add_library(MIAOpt MODULE
 )
 
 set_target_properties(MIAOpt PROPERTIES
-    COMPILE_FLAGS "-fno-rtti -std=c++14 -g"
+    COMPILE_FLAGS "-fno-rtti -std=c++14 -g -lfl"
 )
 

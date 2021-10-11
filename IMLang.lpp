@@ -1,0 +1,21 @@
+%{
+#include "IMParser.hpp"
+#include "iostream"
+%}
+
+%option noyywrap
+%option yylineno
+
+%%
+
+store|load|alloca|bitcast|getelementptr     {yylval.name = strdup(yytext); return INST;}
+[_a-zA-Z0-9]+         {yylval.name = strdup(yytext); return VAL; }
+"*"       { return STAR; }
+","       { return COMMA; }
+"="       { return EQUAL; }
+":"       { return COLON; }
+"&"       { return ADDRESS; }
+"\n"      { return NEWLINE; }
+[ \t\0]+  { }
+.         { std::cout << "Unrecognized token starting with " << yytext[0] << std::endl; exit(1); }
+%%
